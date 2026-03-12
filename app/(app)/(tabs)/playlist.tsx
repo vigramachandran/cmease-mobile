@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { CheckCircle, Play } from 'lucide-react-native';
+import { CheckCircle, Play, Sparkles } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -44,39 +44,51 @@ function PlaylistItemRow({
   onPress: () => void;
 }) {
   const isCompleted = item.status === 'completed';
-  const color = statusColor(item.status);
+  const isMandatory = item.mandatory;
+  const badgeBg = isMandatory ? theme.colors.plum : theme.colors.blush;
 
   return (
     <TouchableOpacity
-      style={styles.playlistItemRow}
+      style={[styles.playlistItemRow, { borderLeftWidth: 3, borderLeftColor: theme.colors.blush }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Status indicator */}
-      <View style={styles.statusIndicator}>
-        {isCompleted ? (
-          <CheckCircle size={18} color={theme.colors.success} />
-        ) : (
-          <View style={[styles.statusDot, { backgroundColor: color }]} />
-        )}
+      {/* Numbered index badge */}
+      <View style={[styles.indexBadge, { backgroundColor: isMandatory ? theme.colors.plum : theme.colors.blush }]}>
+        <Text style={styles.indexBadgeText}>{index + 1}</Text>
       </View>
 
       {/* Content */}
       <View style={styles.playlistItemContent}>
-        <Text
-          style={[
-            styles.playlistItemTitle,
-            isCompleted && styles.playlistItemTitleDone,
-          ]}
-          numberOfLines={2}
-        >
-          {item.title}
+        <View style={styles.playlistItemTitleRow}>
+          <Text
+            style={[
+              styles.playlistItemTitle,
+              isCompleted && styles.playlistItemTitleDone,
+            ]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          {isMandatory && (
+            <View style={styles.requiredBadge}>
+              <Text style={styles.requiredBadgeText}>REQUIRED</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.playlistItemProvider} numberOfLines={1}>
+          {item.provider}
         </Text>
-        <Text style={styles.playlistItemMeta}>
-          {item.provider} · {item.credits} cr ·{' '}
-          {Math.round((item.durationMinutes / 60) * 10) / 10}h
-          {item.mandatory ? ' · Mandatory' : ''}
-        </Text>
+        <View style={styles.playlistItemMetaRow}>
+          <Text style={styles.playlistItemMeta}>
+            {item.credits} cr · {Math.round((item.durationMinutes / 60) * 10) / 10}h
+          </Text>
+          {item.efficiencyScore != null && (
+            <Text style={styles.efficiencyBadge}>
+              ⚡ {item.efficiencyScore.toFixed(1)} cr/hr
+            </Text>
+          )}
+        </View>
         {item.fillsRequirements.length > 0 && (
           <Text style={styles.playlistItemReqs} numberOfLines={1}>
             Fills: {item.fillsRequirements.join(', ')}
@@ -84,7 +96,17 @@ function PlaylistItemRow({
         )}
       </View>
 
-      <Text style={styles.playlistItemCost}>{item.cost}</Text>
+      {/* Right side: cost + status */}
+      <View style={styles.playlistItemRight}>
+        <Text style={styles.playlistItemCost}>{item.cost}</Text>
+        <View style={styles.statusIndicator}>
+          {isCompleted ? (
+            <CheckCircle size={18} color={theme.colors.success} />
+          ) : (
+            <View style={styles.statusCircleOutline} />
+          )}
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -95,7 +117,7 @@ function GapsSummary({ gaps }: { gaps: ComplianceGap[] }) {
     <Card style={styles.gapsCard}>
       <Text style={styles.gapsTitle}>Compliance Gaps</Text>
       {gaps.map((gap) => (
-        <View key={gap.state} style={styles.gapRow}>
+        <View key={gap.state} style={[styles.gapRow, { borderLeftWidth: 3, borderLeftColor: theme.colors.blush, paddingLeft: theme.spacing[3] }]}>
           <Text style={styles.gapState}>{gap.state}</Text>
           <View style={styles.gapDetails}>
             {gap.generalCreditsRemaining > 0 && (
@@ -223,11 +245,12 @@ export default function PlaylistScreen() {
             {!playlist ? (
               <>
                 <GapsSummary gaps={gaps} />
-                <Card style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>No playlist yet</Text>
-                  <Text style={styles.emptyText}>
-                    Generate a personalized CME playlist based on your
-                    compliance gaps and specialty.
+                {/* Hero generate card */}
+                <View style={styles.heroGenerateCard}>
+                  <Sparkles size={40} color={theme.colors.plum} strokeWidth={1.5} />
+                  <Text style={styles.heroTitle}>Your CME Playlist</Text>
+                  <Text style={styles.heroSubtitle}>
+                    Generate a personalized CME playlist based on your compliance gaps and specialty.
                   </Text>
                   <Button
                     title="Generate My Playlist"
@@ -235,7 +258,7 @@ export default function PlaylistScreen() {
                     loading={generating}
                     fullWidth
                   />
-                </Card>
+                </View>
               </>
             ) : (
               <>
@@ -249,7 +272,7 @@ export default function PlaylistScreen() {
                   <Text style={styles.playAllText}>Play Playlist</Text>
                 </TouchableOpacity>
 
-                {/* Summary */}
+                {/* Summary — horizontal 4-item grid */}
                 <Card style={styles.summaryCard}>
                   <View style={styles.summaryGrid}>
                     <View style={styles.summaryItem}>
@@ -258,18 +281,21 @@ export default function PlaylistScreen() {
                       </Text>
                       <Text style={styles.summaryLabel}>Courses</Text>
                     </View>
+                    <View style={styles.summaryDivider} />
                     <View style={styles.summaryItem}>
                       <Text style={styles.summaryValue}>
                         {playlist.summary.totalCredits.toFixed(1)}
                       </Text>
                       <Text style={styles.summaryLabel}>Credits</Text>
                     </View>
+                    <View style={styles.summaryDivider} />
                     <View style={styles.summaryItem}>
                       <Text style={styles.summaryValue}>
                         {playlist.summary.totalDurationHours.toFixed(1)}h
                       </Text>
                       <Text style={styles.summaryLabel}>Duration</Text>
                     </View>
+                    <View style={styles.summaryDivider} />
                     <View style={styles.summaryItem}>
                       <Text style={styles.summaryValue}>
                         {playlist.summary.estimatedCost}
@@ -331,18 +357,41 @@ const styles = StyleSheet.create({
     color: theme.colors.plumDark,
     marginBottom: theme.spacing[3],
   },
-  gapRow: { flexDirection: 'row', gap: theme.spacing[3], marginBottom: theme.spacing[2] },
+  gapRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.sm,
+  },
   gapState: { fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.bold, color: theme.colors.gray700, width: 32 },
   gapDetails: { flex: 1 },
   gapDetail: { fontSize: theme.fontSize.sm, color: theme.colors.gray500 },
-  emptyCard: { padding: theme.spacing[6], alignItems: 'center' },
-  emptyTitle: {
-    fontSize: theme.fontSize.lg,
+  // Hero generate card
+  heroGenerateCard: {
+    backgroundColor: '#F9F4FA',
+    borderWidth: 1,
+    borderColor: '#E8DDE9',
+    borderRadius: theme.borderRadius.xl,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: theme.spacing[4],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  heroTitle: {
+    fontSize: 22,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plumDark,
+    marginTop: theme.spacing[4],
     marginBottom: theme.spacing[2],
+    textAlign: 'center',
   },
-  emptyText: {
+  heroSubtitle: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.gray500,
     textAlign: 'center',
@@ -361,24 +410,38 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
     shadowColor: theme.colors.plum,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
   playAllText: {
     color: theme.colors.white,
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.bold,
   },
-  summaryCard: { marginBottom: theme.spacing[4], padding: theme.spacing[4] },
-  summaryGrid: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryItem: { alignItems: 'center' },
+  // Summary card
+  summaryCard: {
+    marginBottom: theme.spacing[4],
+    padding: theme.spacing[4],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  summaryGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryItem: { alignItems: 'center', flex: 1 },
+  summaryDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: theme.colors.gray100,
+  },
   summaryValue: {
-    fontSize: theme.fontSize.lg,
+    fontSize: 20,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plum,
   },
-  summaryLabel: { fontSize: theme.fontSize.xs, color: theme.colors.gray500, marginTop: 2 },
+  summaryLabel: { fontSize: 11, color: theme.colors.gray500, marginTop: 2 },
   coursesCard: { padding: theme.spacing[4], marginBottom: theme.spacing[3] },
   coursesTitle: {
     fontSize: theme.fontSize.md,
@@ -392,36 +455,91 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: theme.spacing[3],
     paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    paddingLeft: theme.spacing[2],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray300,
+    marginLeft: -theme.spacing[2],
   },
-  statusIndicator: {
-    width: 20,
+  indexBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingTop: 2,
+    justifyContent: 'center',
     flexShrink: 0,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     marginTop: 2,
   },
+  indexBadgeText: {
+    color: theme.colors.white,
+    fontSize: 11,
+    fontWeight: theme.fontWeight.bold,
+  },
   playlistItemContent: { flex: 1 },
+  playlistItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 2,
+  },
   playlistItemTitle: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.plumDark,
-    marginBottom: 2,
+    flexShrink: 1,
   },
   playlistItemTitleDone: { color: theme.colors.gray500 },
+  requiredBadge: {
+    backgroundColor: '#F3EEF4',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  requiredBadgeText: {
+    color: theme.colors.plum,
+    fontSize: 10,
+    fontWeight: theme.fontWeight.bold,
+    letterSpacing: 0.3,
+  },
+  playlistItemProvider: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.gray500,
+    marginBottom: 3,
+  },
+  playlistItemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    flexWrap: 'wrap',
+  },
   playlistItemMeta: { fontSize: theme.fontSize.xs, color: theme.colors.gray500 },
+  efficiencyBadge: {
+    fontSize: 11,
+    color: '#E6A817',
+    fontWeight: theme.fontWeight.medium,
+  },
   playlistItemReqs: { fontSize: theme.fontSize.xs, color: theme.colors.plum, marginTop: 2 },
+  playlistItemRight: {
+    alignItems: 'flex-end',
+    gap: theme.spacing[2],
+    flexShrink: 0,
+  },
   playlistItemCost: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.gray700,
-    flexShrink: 0,
+  },
+  statusIndicator: {
+    width: 20,
+    alignItems: 'center',
+  },
+  statusCircleOutline: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: theme.colors.gray300,
   },
   regenerateLink: { alignItems: 'center', paddingVertical: theme.spacing[3] },
   regenerateLinkText: {

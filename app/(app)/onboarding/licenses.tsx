@@ -38,6 +38,9 @@ const STATE_NAMES: Record<string, string> = {
   WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 };
 
+const TOTAL_STEPS = 4;
+const CURRENT_STEP = 2;
+
 export default function OnboardingLicensesScreen() {
   const { profile } = useAuthStore();
   const params = useLocalSearchParams<{
@@ -104,14 +107,32 @@ export default function OnboardingLicensesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
+        {/* Step progress bar */}
+        <View style={styles.progressBar}>
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.progressPill,
+                i < CURRENT_STEP ? styles.progressPillActive : styles.progressPillInactive,
+              ]}
+            />
+          ))}
+        </View>
+
         <View style={styles.header}>
-          <View style={styles.stepIndicator}>
-            <Text style={styles.stepText}>Step 2 of 4</Text>
-          </View>
+          <Text style={styles.stepText}>Step 2 of 4</Text>
           <Text style={styles.title}>Where are you licensed?</Text>
           <Text style={styles.subtitle}>
             Select all states where you hold an active medical license
           </Text>
+          {selected.size > 0 && (
+            <View style={styles.selectionBadge}>
+              <Text style={styles.selectionBadgeText}>
+                {selected.size} {selected.size === 1 ? 'state' : 'states'} selected
+              </Text>
+            </View>
+          )}
         </View>
 
         <ScrollView
@@ -146,7 +167,7 @@ export default function OnboardingLicensesScreen() {
           <Button
             title={
               selected.size > 0
-                ? `Continue with ${selected.size} state${selected.size > 1 ? 's' : ''}`
+                ? `Continue with ${selected.size} state${selected.size > 1 ? 's' : ''} \u2192`
                 : 'Continue'
             }
             onPress={handleContinue}
@@ -168,22 +189,31 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing[6],
   },
-  header: {
-    paddingTop: theme.spacing[6],
-    paddingBottom: theme.spacing[4],
+  progressBar: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: theme.spacing[4],
+    marginBottom: theme.spacing[5],
   },
-  stepIndicator: {
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.gray100,
-    paddingVertical: 4,
-    paddingHorizontal: theme.spacing[3],
-    borderRadius: theme.borderRadius.full,
-    marginBottom: theme.spacing[3],
+  progressPill: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  progressPillActive: {
+    backgroundColor: theme.colors.plum,
+  },
+  progressPillInactive: {
+    backgroundColor: theme.colors.gray300,
+  },
+  header: {
+    paddingBottom: theme.spacing[4],
   },
   stepText: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.gray500,
     fontWeight: theme.fontWeight.medium,
+    marginBottom: theme.spacing[3],
   },
   title: {
     fontSize: theme.fontSize.xxl,
@@ -196,6 +226,19 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
     lineHeight: 22,
   },
+  selectionBadge: {
+    alignSelf: 'flex-start',
+    marginTop: theme.spacing[3],
+    backgroundColor: theme.colors.plum,
+    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[3],
+    borderRadius: theme.borderRadius.full,
+  },
+  selectionBadgeText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.white,
+    fontWeight: theme.fontWeight.semibold,
+  },
   statesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -206,6 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minHeight: 44,
     paddingVertical: theme.spacing[2],
     paddingHorizontal: theme.spacing[3],
     backgroundColor: theme.colors.white,
@@ -216,6 +260,11 @@ const styles = StyleSheet.create({
   chipSelected: {
     backgroundColor: theme.colors.plum,
     borderColor: theme.colors.plum,
+    shadowColor: theme.colors.plum,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   chipText: {
     fontSize: theme.fontSize.sm,

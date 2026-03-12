@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Shield } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
 import { ComplianceCard } from '../../../components/ComplianceCard';
@@ -20,34 +22,54 @@ import { ComplianceStatus, UserLicense } from '../../../lib/types';
 
 function CircularProgress({
   percentage,
-  size = 120,
+  size = 110,
 }: {
   percentage: number;
   size?: number;
 }) {
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.min(Math.max(percentage, 0), 100);
+  const strokeDashoffset = circumference * (1 - progress / 100);
   const color =
-    percentage >= 80
+    progress >= 80
       ? theme.colors.success
-      : percentage >= 50
+      : progress >= 50
       ? theme.colors.plum
       : theme.colors.error;
 
   return (
-    <View
-      style={[
-        styles.circleContainer,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderColor: color,
-        },
-      ]}
-    >
-      <Text style={[styles.circlePercent, { color }]}>
-        {Math.round(percentage)}%
-      </Text>
-      <Text style={styles.circleLabel}>overall</Text>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        {/* Track */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={theme.colors.gray100}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        {/* Progress */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <View style={{ alignItems: 'center' }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', color }}>{Math.round(progress)}%</Text>
+        <Text style={{ fontSize: 11, color: theme.colors.gray500 }}>overall</Text>
+      </View>
     </View>
   );
 }
@@ -55,9 +77,9 @@ function CircularProgress({
 function SkeletonCard() {
   return (
     <Card style={styles.skeletonCard}>
-      <View style={styles.skeletonLine} />
-      <View style={[styles.skeletonLine, { width: '60%', marginTop: 8 }]} />
-      <View style={[styles.skeletonLine, { height: 8, marginTop: 16 }]} />
+      <View style={[styles.skeletonLine, { backgroundColor: theme.colors.gray100, width: '80%' }]} />
+      <View style={[styles.skeletonLine, { backgroundColor: '#E8E2EA', width: '60%', marginTop: 8 }]} />
+      <View style={[styles.skeletonLine, { backgroundColor: theme.colors.gray100, height: 8, marginTop: 16, width: '95%' }]} />
     </Card>
   );
 }
@@ -128,10 +150,19 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>
-            Welcome back{lastName ? `, Dr. ${lastName}` : ''}
-          </Text>
-          <Text style={styles.subgreeting}>Your CME compliance overview</Text>
+          <View style={styles.headerInner}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greeting}>
+                Welcome back{lastName ? `, Dr. ${lastName}` : ''}
+              </Text>
+              <Text style={styles.subgreeting}>Your CME compliance overview</Text>
+            </View>
+            {lastName ? (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarInitial}>{lastName.charAt(0)}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {/* Overall compliance card */}
@@ -151,6 +182,7 @@ export default function DashboardScreen() {
         ) : compliance ? (
           <>
             <Card style={styles.overallCard}>
+              <View style={styles.overallAccentBar} />
               <View style={styles.overallContent}>
                 <CircularProgress percentage={compliance?.overallPercentage ?? 0} />
                 <View style={styles.overallDetails}>
@@ -171,7 +203,7 @@ export default function DashboardScreen() {
               <Button
                 title="Generate Playlist"
                 variant="primary"
-                style={styles.quickBtn}
+                style={[styles.quickBtn, styles.quickBtnPrimary]}
                 onPress={() => router.push('/(app)/(tabs)/playlist')}
               />
               <Button
@@ -184,7 +216,12 @@ export default function DashboardScreen() {
 
             {/* License Renewals card */}
             <Card style={styles.licenseCard}>
-              <Text style={styles.sectionTitle}>License Renewals</Text>
+              <View style={styles.licenseSectionHeader}>
+                <Text style={styles.sectionTitle}>License Renewals</Text>
+                <TouchableOpacity onPress={() => router.push('/(app)/manage-licenses' as any)}>
+                  <Text style={styles.manageLinkText}>Manage →</Text>
+                </TouchableOpacity>
+              </View>
               {licensesLoading ? (
                 <ActivityIndicator
                   size="small"
@@ -201,10 +238,7 @@ export default function DashboardScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => router.push('/(app)/manage-licenses' as any)}
-                >
+                <>
                   {licenses.map((lic) => {
                     const expDate = new Date(lic.expirationDate);
                     const months =
@@ -221,14 +255,20 @@ export default function DashboardScreen() {
                           <Text style={styles.stateChipText}>{lic.state}</Text>
                         </View>
                         <View style={styles.licenseExpContainer}>
-                          <Text style={[styles.licenseExpText, { color }]}>
-                            {expLabel}
-                          </Text>
+                          {isExpired ? (
+                            <View style={styles.expiredBadge}>
+                              <Text style={styles.expiredBadgeText}>EXPIRED</Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.licenseExpText, { color }]}>
+                              {expLabel}
+                            </Text>
+                          )}
                         </View>
                       </View>
                     );
                   })}
-                </TouchableOpacity>
+                </>
               )}
             </Card>
 
@@ -242,9 +282,10 @@ export default function DashboardScreen() {
               </View>
             ) : (
               <Card style={styles.emptyCard}>
+                <Shield size={32} color={theme.colors.gray300} strokeWidth={1.5} style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyTitle}>No states configured yet</Text>
                 <Text style={styles.emptyText}>
-                  No license states configured yet. Complete onboarding to see
-                  state compliance details.
+                  Complete onboarding to see state compliance details.
                 </Text>
               </Card>
             )}
@@ -268,37 +309,56 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing[5],
     paddingBottom: theme.spacing[5],
   },
+  headerInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   greeting: {
-    fontSize: theme.fontSize.xl,
+    fontSize: 26,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plumDark,
   },
   subgreeting: {
-    fontSize: theme.fontSize.sm,
+    fontSize: 13,
     color: theme.colors.gray500,
-    marginTop: 2,
+    marginTop: 4,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.plum,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: theme.spacing[3],
+    flexShrink: 0,
+  },
+  avatarInitial: {
+    color: theme.colors.white,
+    fontWeight: theme.fontWeight.bold,
+    fontSize: 16,
   },
   overallCard: {
     marginBottom: theme.spacing[4],
+    backgroundColor: '#F9F4FA',
+    borderWidth: 1,
+    borderColor: '#E8DDE9',
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.plum,
+    overflow: 'hidden',
+  },
+  overallAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 0,
   },
   overallContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing[5],
-  },
-  circleContainer: {
-    borderWidth: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  circlePercent: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-  },
-  circleLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.gray500,
   },
   overallDetails: {
     flex: 1,
@@ -325,10 +385,28 @@ const styles = StyleSheet.create({
   },
   quickBtn: {
     flex: 1,
-    height: 44,
+    height: 48,
+  },
+  quickBtnPrimary: {
+    shadowColor: theme.colors.plum,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   licenseCard: {
     marginBottom: theme.spacing[5],
+  },
+  licenseSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing[3],
+  },
+  manageLinkText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.plum,
+    fontWeight: theme.fontWeight.semibold,
   },
   noLicensesRow: {
     flexDirection: 'row',
@@ -354,22 +432,36 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.gray100,
   },
   stateChip: {
-    backgroundColor: theme.colors.gray100,
-    paddingVertical: 3,
+    backgroundColor: '#F3EEF4',
+    paddingVertical: 4,
     paddingHorizontal: theme.spacing[3],
     borderRadius: theme.borderRadius.full,
   },
   stateChipText: {
     fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.plumDark,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.plum,
   },
   licenseExpContainer: {},
   licenseExpText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium,
   },
-  statesSection: {},
+  expiredBadge: {
+    backgroundColor: '#FDECEA',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.full,
+  },
+  expiredBadgeText: {
+    fontSize: 11,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.error,
+    letterSpacing: 0.4,
+  },
+  statesSection: {
+    marginBottom: theme.spacing[2],
+  },
   sectionTitle: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
@@ -397,8 +489,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
   },
   emptyCard: {
-    padding: theme.spacing[5],
+    padding: theme.spacing[6],
     alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.gray700,
+    marginBottom: 6,
   },
   emptyText: {
     color: theme.colors.gray500,
@@ -412,8 +510,6 @@ const styles = StyleSheet.create({
   },
   skeletonLine: {
     height: 16,
-    backgroundColor: theme.colors.gray100,
     borderRadius: theme.borderRadius.sm,
-    width: '80%',
   },
 });

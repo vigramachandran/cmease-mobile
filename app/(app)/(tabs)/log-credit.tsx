@@ -1,3 +1,4 @@
+import { Calendar, CheckCircle, FileText } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -6,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,19 +39,32 @@ function CategorySelector({
   return (
     <View>
       <Text style={styles.label}>Category</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.categoryRow}>
-          {CATEGORIES.map((cat) => (
-            <Button
+      <View style={styles.categoryGrid}>
+        {CATEGORIES.map((cat) => {
+          const isSelected = selected === cat;
+          return (
+            <TouchableOpacity
               key={cat}
-              title={cat}
-              variant={selected === cat ? 'primary' : 'outline'}
+              style={[
+                styles.categoryPill,
+                isSelected ? styles.categoryPillSelected : styles.categoryPillUnselected,
+              ]}
               onPress={() => onSelect(cat)}
-              style={styles.categoryBtn}
-            />
-          ))}
-        </View>
-      </ScrollView>
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.categoryPillText,
+                  isSelected ? styles.categoryPillTextSelected : styles.categoryPillTextUnselected,
+                ]}
+                numberOfLines={1}
+              >
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -127,13 +142,29 @@ export default function LogCreditScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Log Credit</Text>
+          {/* Header */}
+          <View style={styles.headerBlock}>
+            <Text style={styles.title}>Log Credit</Text>
+            <Text style={styles.subtitle}>Manually add a CME activity</Text>
+          </View>
 
+          {/* Success state */}
           {success && (
             <Card style={styles.successCard}>
-              <Text style={styles.successText}>
-                ✓ Credit saved successfully!
+              <View style={styles.successCheckCircle}>
+                <CheckCircle size={28} color={theme.colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Credit Saved!</Text>
+              <Text style={styles.successMessage}>
+                Your CME credit has been recorded successfully.
               </Text>
+              <TouchableOpacity
+                style={styles.successDismissBtn}
+                onPress={() => setSuccess(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.successDismissText}>Log Another</Text>
+              </TouchableOpacity>
             </Card>
           )}
 
@@ -165,28 +196,48 @@ export default function LogCreditScreen() {
 
             <View style={styles.gap} />
 
-            <Input
-              ref={hoursRef}
-              label="Credit Hours"
-              placeholder="e.g. 1.5"
-              value={hours}
-              onChangeText={setHours}
-              keyboardType="decimal-pad"
-              returnKeyType="next"
-              onSubmitEditing={() => dateRef.current?.focus()}
-            />
+            {/* Credit Hours with inline "hrs" suffix */}
+            <View>
+              <Text style={styles.label}>Credit Hours</Text>
+              <View style={styles.hoursInputWrapper}>
+                <Input
+                  ref={hoursRef}
+                  label=""
+                  placeholder="e.g. 1.5"
+                  value={hours}
+                  onChangeText={setHours}
+                  keyboardType="decimal-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => dateRef.current?.focus()}
+                  style={styles.hoursInputField}
+                />
+                <View style={styles.hoursUnit}>
+                  <Text style={styles.hoursUnitText}>hrs</Text>
+                </View>
+              </View>
+            </View>
 
             <View style={styles.gap} />
 
-            <Input
-              ref={dateRef}
-              label="Completion Date"
-              placeholder="YYYY-MM-DD"
-              value={completionDate}
-              onChangeText={setCompletionDate}
-              keyboardType="numbers-and-punctuation"
-              returnKeyType="done"
-            />
+            {/* Completion Date with calendar icon */}
+            <View>
+              <Text style={styles.label}>Completion Date</Text>
+              <View style={styles.dateInputWrapper}>
+                <Input
+                  ref={dateRef}
+                  label=""
+                  placeholder="YYYY-MM-DD"
+                  value={completionDate}
+                  onChangeText={setCompletionDate}
+                  keyboardType="numbers-and-punctuation"
+                  returnKeyType="done"
+                  style={styles.dateInputField}
+                />
+                <View style={styles.dateIconOverlay} pointerEvents="none">
+                  <Calendar size={16} color={theme.colors.gray500} />
+                </View>
+              </View>
+            </View>
 
             <View style={styles.gap} />
 
@@ -204,6 +255,9 @@ export default function LogCreditScreen() {
 
           {/* Certificate upload placeholder */}
           <Card style={styles.uploadCard}>
+            <View style={styles.uploadIconRow}>
+              <FileText size={24} color={theme.colors.gray500} />
+            </View>
             <Text style={styles.uploadTitle}>Upload Certificate</Text>
             <Text style={styles.uploadText}>
               Certificate upload with auto-parsing coming soon. We'll extract
@@ -228,24 +282,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[4],
     paddingBottom: theme.spacing[8],
   },
+  headerBlock: {
+    paddingTop: theme.spacing[5],
+    marginBottom: theme.spacing[5],
+  },
   title: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plumDark,
-    paddingTop: theme.spacing[5],
-    marginBottom: theme.spacing[5],
   },
+  subtitle: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    marginTop: 4,
+  },
+  // Success state
   successCard: {
     backgroundColor: '#E8F5EE',
-    padding: theme.spacing[4],
+    padding: theme.spacing[6],
     marginBottom: theme.spacing[4],
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.success,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C2E6D0',
   },
-  successText: {
+  successCheckCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#D1F0DF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing[3],
+  },
+  successTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
     color: theme.colors.success,
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.medium,
+    marginBottom: 6,
+  },
+  successMessage: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.success,
+    textAlign: 'center',
+    marginBottom: theme.spacing[4],
+    opacity: 0.85,
+  },
+  successDismissBtn: {
+    backgroundColor: theme.colors.success,
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[6],
+    borderRadius: theme.borderRadius.full,
+  },
+  successDismissText: {
+    color: theme.colors.white,
+    fontWeight: theme.fontWeight.semibold,
+    fontSize: theme.fontSize.sm,
   },
   errorBanner: {
     backgroundColor: '#FDECEA',
@@ -258,8 +349,13 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.error,
   },
   formCard: {
-    padding: theme.spacing[4],
+    padding: theme.spacing[5],
     marginBottom: theme.spacing[4],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   gap: {
     height: theme.spacing[4],
@@ -270,31 +366,92 @@ const styles = StyleSheet.create({
     color: theme.colors.gray700,
     marginBottom: theme.spacing[2],
   },
-  categoryRow: {
+  // Hours input
+  hoursInputWrapper: {
+    position: 'relative',
+  },
+  hoursInputField: {
+    paddingRight: 48,
+  },
+  hoursUnit: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  hoursUnitText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    fontWeight: theme.fontWeight.medium,
+  },
+  // Date input
+  dateInputWrapper: {
+    position: 'relative',
+  },
+  dateInputField: {
+    paddingRight: 48,
+  },
+  dateIconOverlay: {
+    position: 'absolute',
+    right: 16,
+    top: 46,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  // Category grid
+  categoryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing[2],
-    paddingBottom: 4,
   },
-  categoryBtn: {
+  categoryPill: {
     height: 36,
-    paddingHorizontal: theme.spacing[3],
+    paddingHorizontal: 12,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  categoryPillSelected: {
+    backgroundColor: theme.colors.plum,
+  },
+  categoryPillUnselected: {
+    backgroundColor: theme.colors.gray100,
+  },
+  categoryPillText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+  },
+  categoryPillTextSelected: {
+    color: theme.colors.white,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  categoryPillTextUnselected: {
+    color: theme.colors.gray700,
+  },
+  // Upload card
   uploadCard: {
     padding: theme.spacing[4],
     borderWidth: 1.5,
     borderColor: theme.colors.gray300,
     borderStyle: 'dashed',
     backgroundColor: theme.colors.gray100,
+    alignItems: 'center',
+  },
+  uploadIconRow: {
+    marginBottom: theme.spacing[2],
   },
   uploadTitle: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.gray700,
     marginBottom: theme.spacing[2],
+    textAlign: 'center',
   },
   uploadText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.gray500,
     lineHeight: 20,
+    textAlign: 'center',
   },
 });

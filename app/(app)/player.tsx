@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, ChevronLeft, ChevronRight, Clock, Zap, ZapOff } from 'lucide-react-native';
+import { CheckCircle, ChevronLeft, ChevronRight, Clock, X, Zap, ZapOff } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -85,19 +85,30 @@ function ProgressBar({ progress }: { progress: number }) {
   );
 }
 const progressStyles = StyleSheet.create({
-  track: { height: 3, backgroundColor: theme.colors.gray100, borderRadius: 2, overflow: 'hidden' },
+  track: { height: 3, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: theme.colors.plum, borderRadius: 2 },
 });
 
 // ─── Quiz Pause Toast ─────────────────────────────────────────────────────────
 
 function QuizToast({ visible }: { visible: boolean }) {
-  if (!visible) return null;
+  const translateY = useRef(new Animated.Value(-60)).current;
+
+  useEffect(() => {
+    Animated.spring(translateY, {
+      toValue: visible ? 0 : -60,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 10,
+    }).start();
+  }, [visible, translateY]);
+
   return (
     <View style={toastStyles.container} pointerEvents="none">
-      <View style={toastStyles.pill}>
-        <Text style={toastStyles.text}>📝 Post-test — please answer the questions</Text>
-      </View>
+      <Animated.View style={[toastStyles.pill, { transform: [{ translateY }] }]}>
+        <Text style={toastStyles.icon}>⏸</Text>
+        <Text style={toastStyles.text}>Post-test — please answer the questions</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -109,19 +120,23 @@ const toastStyles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 50,
-    paddingTop: 8,
+    paddingTop: 10,
   },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: theme.colors.warning,
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[2],
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.lg,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 8,
   },
+  icon: { fontSize: 16 },
   text: { color: '#1a1a1a', fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.semibold },
 });
 
@@ -523,12 +538,12 @@ export default function PlayerScreen() {
 
   // Agent indicator dot color
   const agentDotColor = !agentEnabled
-    ? theme.colors.gray300
+    ? 'rgba(255,255,255,0.3)'
     : isQuizPaused
     ? theme.colors.warning
     : agentActive
     ? theme.colors.success
-    : theme.colors.gray300;
+    : 'rgba(255,255,255,0.3)';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -536,54 +551,52 @@ export default function PlayerScreen() {
       {/* ── Top Bar ── */}
       <View style={styles.topBar}>
         <View style={styles.topBarRow}>
-          {/* Back */}
+          {/* Back/close */}
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.back()}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <ChevronLeft size={20} color={theme.colors.plumDark} />
-            <Text style={styles.backText}>Exit</Text>
+            <X size={22} color={theme.colors.white} />
           </TouchableOpacity>
 
-          {/* Center: progress info */}
-          <View style={styles.topBarCenter}>
-            <Text style={styles.courseCounter}>
-              Course {currentIndex + 1} of {total}
-            </Text>
-            <ProgressBar progress={progress} />
-            <Text style={styles.progressDetail}>
-              {earned.toFixed(1)}/{needed.toFixed(0)} credits · {remainingHours}h left
-            </Text>
-          </View>
+          {/* Center: course title */}
+          <Text style={styles.courseTitle} numberOfLines={1}>
+            {course.title}
+          </Text>
 
-          {/* Right: agent toggle + timer */}
-          <View style={styles.topBarRight}>
-            <TouchableOpacity
-              onPress={toggleAgent}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.agentToggle}
-            >
-              <View style={[styles.agentDot, { backgroundColor: agentDotColor }]} />
-              {agentEnabled ? (
-                <Zap size={14} color={theme.colors.plum} />
-              ) : (
-                <ZapOff size={14} color={theme.colors.gray300} />
-              )}
-            </TouchableOpacity>
-            <View style={styles.timerChip}>
-              <Clock size={12} color={isQuizPaused ? theme.colors.warning : theme.colors.plum} />
-              <Text style={[styles.timerText, isQuizPaused && styles.timerTextPaused]}>
-                {formatTime(timeOnCourse)}
-              </Text>
-            </View>
-          </View>
+          {/* Right: agent toggle */}
+          <TouchableOpacity
+            onPress={toggleAgent}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={[
+              styles.agentToggle,
+              agentEnabled && agentActive && styles.agentToggleActive,
+            ]}
+          >
+            <View style={[styles.agentDot, { backgroundColor: agentDotColor }]} />
+            {agentEnabled ? (
+              <Zap size={14} color={agentActive ? theme.colors.plum : theme.colors.white} />
+            ) : (
+              <ZapOff size={14} color="rgba(255,255,255,0.5)" />
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Course title */}
-        <Text style={styles.courseTitle} numberOfLines={1}>
-          {course.title}
-        </Text>
+        {/* Progress row */}
+        <View style={styles.progressRow}>
+          <View style={styles.progressBarWrapper}>
+            <ProgressBar progress={progress} />
+          </View>
+          <View style={styles.progressMeta}>
+            <Text style={styles.courseCounter}>
+              {currentIndex + 1}/{total}
+            </Text>
+            <Text style={styles.progressDetail}>
+              {earned.toFixed(1)}/{needed.toFixed(0)} cr · {remainingHours}h left
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* ── WebView ── */}
@@ -622,6 +635,15 @@ export default function PlayerScreen() {
 
       {/* ── Bottom Control Bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
+        {/* Timer chip */}
+        <View style={styles.timerChip}>
+          <Clock size={12} color={isQuizPaused ? theme.colors.warning : theme.colors.plum} />
+          <Text style={[styles.timerText, isQuizPaused && styles.timerTextPaused]}>
+            {formatTime(timeOnCourse)}
+          </Text>
+        </View>
+
+        {/* Prev nav */}
         <TouchableOpacity
           style={[styles.navBtn, currentIndex === 0 && styles.navBtnDisabled]}
           onPress={handlePrev}
@@ -636,6 +658,7 @@ export default function PlayerScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Mark complete */}
         <TouchableOpacity
           style={[
             styles.completeBtn,
@@ -656,6 +679,7 @@ export default function PlayerScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Next nav */}
         <TouchableOpacity
           style={[styles.navBtn, currentIndex === total - 1 && styles.navBtnDisabled]}
           onPress={handleNext}
@@ -695,36 +719,71 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.white },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background },
   loadingText: { color: theme.colors.gray500, fontSize: theme.fontSize.md },
-  // Top bar
+
+  // Top bar — dark plumDark background
   topBar: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.plumDark,
     paddingHorizontal: theme.spacing[4],
     paddingTop: theme.spacing[2],
     paddingBottom: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  topBarRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing[3], marginBottom: theme.spacing[2] },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 },
-  backText: { fontSize: theme.fontSize.sm, color: theme.colors.plumDark, fontWeight: theme.fontWeight.medium },
-  topBarCenter: { flex: 1, gap: 4 },
-  courseCounter: { fontSize: theme.fontSize.xs, fontWeight: theme.fontWeight.semibold, color: theme.colors.gray500, textTransform: 'uppercase', letterSpacing: 0.5 },
-  progressDetail: { fontSize: theme.fontSize.xs, color: theme.colors.gray500 },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing[2], flexShrink: 0 },
-  agentToggle: { flexDirection: 'row', alignItems: 'center', gap: 3, padding: 4 },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[2],
+  },
+  backBtn: {
+    flexShrink: 0,
+    padding: 2,
+  },
+  courseTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.white,
+  },
+  agentToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    flexShrink: 0,
+  },
+  agentToggleActive: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
   agentDot: { width: 6, height: 6, borderRadius: 3 },
-  timerChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: theme.colors.gray100, paddingHorizontal: theme.spacing[2], paddingVertical: 4, borderRadius: theme.borderRadius.full },
-  timerText: { fontSize: theme.fontSize.xs, fontWeight: theme.fontWeight.semibold, color: theme.colors.plum, fontVariant: ['tabular-nums'] as any },
-  timerTextPaused: { color: theme.colors.warning },
-  courseTitle: { fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.semibold, color: theme.colors.plumDark },
+
+  // Progress row
+  progressRow: {
+    gap: 6,
+  },
+  progressBarWrapper: {},
+  progressMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  courseCounter: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+    color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  progressDetail: {
+    fontSize: theme.fontSize.xs,
+    color: 'rgba(255,255,255,0.6)',
+  },
+
   // WebView
   webviewContainer: { flex: 1, position: 'relative' },
   webview: { flex: 1 },
+
   // Bottom bar
   bottomBar: {
     flexDirection: 'row',
@@ -734,19 +793,60 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.gray100,
     paddingHorizontal: theme.spacing[4],
     paddingTop: theme.spacing[3],
-    gap: theme.spacing[3],
+    gap: theme.spacing[2],
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  navBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing[3], paddingHorizontal: theme.spacing[2], gap: 2 },
+
+  // Timer chip (now in bottom bar)
+  timerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: 5,
+    borderRadius: theme.borderRadius.full,
+    flexShrink: 0,
+  },
+  timerText: {
+    fontSize: 13,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.plum,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  timerTextPaused: { color: theme.colors.warning },
+
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing[3],
+    paddingHorizontal: theme.spacing[2],
+    gap: 2,
+    flexShrink: 0,
+  },
   navBtnDisabled: { opacity: 0.4 },
   navBtnText: { fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.medium, color: theme.colors.gray700 },
   navBtnTextDisabled: { color: theme.colors.gray300 },
-  completeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing[2], backgroundColor: theme.colors.plum, borderRadius: theme.borderRadius.md, paddingVertical: theme.spacing[3] },
+
+  completeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[2],
+    backgroundColor: theme.colors.plum,
+    borderRadius: theme.borderRadius.md,
+    height: 52,
+  },
   completeBtnDone: { backgroundColor: '#E8F5EE' },
-  completeBtnText: { color: theme.colors.white, fontWeight: theme.fontWeight.semibold, fontSize: theme.fontSize.sm },
+  completeBtnText: {
+    color: theme.colors.white,
+    fontWeight: theme.fontWeight.bold,
+    fontSize: theme.fontSize.sm,
+  },
   completeBtnTextDone: { color: theme.colors.success },
 });

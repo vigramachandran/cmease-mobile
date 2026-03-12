@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
-import { Pencil, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Pencil, ShieldCheck, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -40,6 +40,12 @@ function getLicenseColor(months: number): string {
   if (months < 3) return theme.colors.error;
   if (months < 6) return '#F59E0B';
   return theme.colors.success;
+}
+
+function getLicenseBgColor(months: number): string {
+  if (months < 3) return '#FEF2F2';
+  if (months < 6) return '#FFFBEB';
+  return '#F0FDF4';
 }
 
 interface EditState {
@@ -172,12 +178,12 @@ export default function ManageLicensesScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
+        {/* ── Header ── */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Back</Text>
+            <ChevronLeft size={20} color={theme.colors.plumDark} />
+            <Text style={styles.backBtnText}>My Licenses</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Licenses</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -191,11 +197,20 @@ export default function ManageLicensesScreen() {
               <Text style={styles.loadingText}>Loading licenses...</Text>
             </Card>
           ) : licenses.length === 0 && !showAdd ? (
+            /* ── Empty state ── */
             <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No licenses added yet.</Text>
+              <ShieldCheck size={48} color={theme.colors.gray300} />
+              <Text style={styles.emptyText}>No licenses yet</Text>
               <Text style={styles.emptySubtext}>
-                Tap "Add License" below to get started.
+                Add your medical licenses to track renewal deadlines
               </Text>
+              <TouchableOpacity
+                style={styles.emptyAddBtn}
+                onPress={() => setShowAdd(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emptyAddBtnText}>Add License</Text>
+              </TouchableOpacity>
             </Card>
           ) : (
             licenses.map((lic) => {
@@ -204,6 +219,7 @@ export default function ManageLicensesScreen() {
                 (expDate.getFullYear() - today.getFullYear()) * 12 +
                 (expDate.getMonth() - today.getMonth());
               const color = getLicenseColor(months);
+              const bgColor = getLicenseBgColor(months);
               const isExpired = months < 0;
               const expLabel = isExpired
                 ? 'EXPIRED'
@@ -212,172 +228,219 @@ export default function ManageLicensesScreen() {
               const isEditing = editState?.licenseId === lic.id;
 
               return (
-                <Card key={lic.id} style={styles.licenseCard}>
+                <View
+                  key={lic.id}
+                  style={[
+                    styles.licenseCardOuter,
+                    {
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.07,
+                      shadowRadius: 6,
+                      elevation: 2,
+                    },
+                  ]}
+                >
                   {isEditing && editState ? (
-                    // Edit mode
-                    <View>
-                      <View style={styles.editHeader}>
-                        <View style={styles.stateBadge}>
-                          <Text style={styles.stateBadgeText}>{editState.state}</Text>
+                    /* ── Edit mode ── */
+                    <View style={styles.licenseCardInner}>
+                      {/* Left accent bar */}
+                      <View style={[styles.accentBar, { backgroundColor: color }]} />
+                      <View style={styles.licenseCardContent}>
+                        <View style={styles.editHeader}>
+                          <View style={styles.stateBadge}>
+                            <Text style={styles.stateBadgeText}>{editState.state}</Text>
+                          </View>
+                          <Text style={styles.editingLabel}>Editing</Text>
                         </View>
-                        <Text style={styles.editingLabel}>Editing</Text>
-                      </View>
 
-                      <Text style={styles.inputLabel}>Expiration Date (MM/YYYY)</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        value={editState.expirationDate}
-                        onChangeText={(v) =>
-                          setEditState({ ...editState, expirationDate: v })
-                        }
-                        placeholder="MM/YYYY"
-                        keyboardType="numbers-and-punctuation"
-                        maxLength={7}
-                      />
+                        <Text style={styles.inputLabel}>Expiration Date (MM/YYYY)</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          value={editState.expirationDate}
+                          onChangeText={(v) =>
+                            setEditState({ ...editState, expirationDate: v })
+                          }
+                          placeholder="MM/YYYY"
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={7}
+                        />
 
-                      <Text style={styles.inputLabel}>License Number (Optional)</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        value={editState.licenseNumber}
-                        onChangeText={(v) =>
-                          setEditState({ ...editState, licenseNumber: v })
-                        }
-                        placeholder="Optional"
-                        autoCapitalize="none"
-                      />
+                        <Text style={styles.inputLabel}>License Number (Optional)</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          value={editState.licenseNumber}
+                          onChangeText={(v) =>
+                            setEditState({ ...editState, licenseNumber: v })
+                          }
+                          placeholder="Optional"
+                          autoCapitalize="none"
+                        />
 
-                      <View style={styles.editActions}>
-                        <TouchableOpacity
-                          style={styles.cancelBtn}
-                          onPress={cancelEdit}
-                        >
-                          <Text style={styles.cancelBtnText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.saveBtn, editSaving && styles.saveBtnDisabled]}
-                          onPress={saveEdit}
-                          disabled={editSaving}
-                        >
-                          <Text style={styles.saveBtnText}>
-                            {editSaving ? 'Saving...' : 'Save'}
-                          </Text>
-                        </TouchableOpacity>
+                        <View style={styles.editActions}>
+                          <TouchableOpacity
+                            style={styles.cancelBtn}
+                            onPress={cancelEdit}
+                          >
+                            <Text style={styles.cancelBtnText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.saveBtn, editSaving && styles.saveBtnDisabled]}
+                            onPress={saveEdit}
+                            disabled={editSaving}
+                          >
+                            <Text style={styles.saveBtnText}>
+                              {editSaving ? 'Saving...' : 'Save'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   ) : (
-                    // View mode
-                    <View style={styles.licenseViewRow}>
-                      <View style={styles.licenseInfo}>
-                        <View style={styles.licenseTopRow}>
-                          <Text style={styles.stateAbbr}>{lic.state}</Text>
-                          <Text style={styles.stateName}>
-                            {STATE_NAMES[lic.state] ?? lic.state}
-                          </Text>
+                    /* ── View mode ── */
+                    <View style={styles.licenseCardInner}>
+                      {/* Left accent bar */}
+                      <View style={[styles.accentBar, { backgroundColor: color }]} />
+                      <View style={styles.licenseCardContent}>
+                        <View style={styles.licenseViewRow}>
+                          {/* Left: state */}
+                          <View style={styles.licenseLeft}>
+                            <Text style={styles.stateAbbr}>{lic.state}</Text>
+                            <Text style={styles.stateName}>
+                              {STATE_NAMES[lic.state] ?? lic.state}
+                            </Text>
+                          </View>
+                          {/* Right: expiry badge + license number */}
+                          <View style={styles.licenseRight}>
+                            {isExpired ? (
+                              <View style={[styles.expBadge, { backgroundColor: '#FEF2F2', borderColor: theme.colors.error }]}>
+                                <Text style={[styles.expBadgeText, { color: theme.colors.error }]}>
+                                  EXPIRED
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={[styles.expBadge, { backgroundColor: bgColor, borderColor: color }]}>
+                                <Text style={[styles.expBadgeText, { color }]}>
+                                  {expLabel}
+                                </Text>
+                              </View>
+                            )}
+                            {lic.licenseNumber ? (
+                              <Text style={styles.licenseNumText}>
+                                #{lic.licenseNumber}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
-                        <View style={styles.expRow}>
-                          {isExpired ? (
-                            <View style={styles.expiredBadge}>
-                              <Text style={styles.expiredBadgeText}>EXPIRED</Text>
-                            </View>
-                          ) : (
-                            <Text style={[styles.expText, { color }]}>{expLabel}</Text>
-                          )}
+
+                        {/* Bottom action row */}
+                        <View style={styles.licenseActionsRow}>
+                          <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => startEdit(lic)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Pencil size={14} color={theme.colors.plum} />
+                            <Text style={styles.actionBtnTextEdit}>Edit</Text>
+                          </TouchableOpacity>
+                          <View style={styles.actionDivider} />
+                          <TouchableOpacity
+                            style={styles.actionBtn}
+                            onPress={() => handleDelete(lic)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Trash2 size={14} color={theme.colors.error} />
+                            <Text style={styles.actionBtnTextDelete}>Delete</Text>
+                          </TouchableOpacity>
                         </View>
-                        {lic.licenseNumber ? (
-                          <Text style={styles.licenseNumText}>
-                            #{lic.licenseNumber}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <View style={styles.licenseActions}>
-                        <TouchableOpacity
-                          style={styles.iconBtn}
-                          onPress={() => startEdit(lic)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Pencil size={16} color={theme.colors.plum} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.iconBtn}
-                          onPress={() => handleDelete(lic)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Trash2 size={16} color={theme.colors.error} />
-                        </TouchableOpacity>
                       </View>
                     </View>
                   )}
-                </Card>
+                </View>
               );
             })
           )}
 
-          {/* Add form */}
+          {/* ── Add form card ── */}
           {showAdd && (
-            <Card style={styles.addCard}>
-              <Text style={styles.addCardTitle}>Add License</Text>
-
-              <Text style={styles.inputLabel}>State (2-letter)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={addState}
-                onChangeText={(v) => setAddState(v.toUpperCase().slice(0, 2))}
-                placeholder="e.g. CA"
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-
-              <Text style={styles.inputLabel}>Expiration Date (MM/YYYY)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={addExpDate}
-                onChangeText={setAddExpDate}
-                placeholder="MM/YYYY"
-                keyboardType="numbers-and-punctuation"
-                maxLength={7}
-              />
-
-              <Text style={styles.inputLabel}>License Number (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={addLicenseNum}
-                onChangeText={setAddLicenseNum}
-                placeholder="Optional"
-                autoCapitalize="none"
-              />
-
-              {addError ? (
-                <Text style={styles.addErrorText}>{addError}</Text>
-              ) : null}
-
-              <View style={styles.editActions}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => {
-                    setShowAdd(false);
-                    setAddError('');
-                    setAddState('');
-                    setAddExpDate('');
-                    setAddLicenseNum('');
-                  }}
-                >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, addSaving && styles.saveBtnDisabled]}
-                  onPress={handleAdd}
-                  disabled={addSaving}
-                >
-                  <Text style={styles.saveBtnText}>
-                    {addSaving ? 'Saving...' : 'Save'}
-                  </Text>
-                </TouchableOpacity>
+            <View
+              style={[
+                styles.addCardOuter,
+                {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  elevation: 3,
+                },
+              ]}
+            >
+              <View style={styles.addCardHeader}>
+                <Text style={styles.addCardTitle}>Add New License</Text>
               </View>
-            </Card>
+              <View style={styles.addCardBody}>
+                <Text style={styles.inputLabel}>State (2-letter)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={addState}
+                  onChangeText={(v) => setAddState(v.toUpperCase().slice(0, 2))}
+                  placeholder="e.g. CA"
+                  autoCapitalize="characters"
+                  maxLength={2}
+                />
+
+                <Text style={styles.inputLabel}>Expiration Date (MM/YYYY)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={addExpDate}
+                  onChangeText={setAddExpDate}
+                  placeholder="MM/YYYY"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={7}
+                />
+
+                <Text style={styles.inputLabel}>License Number (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={addLicenseNum}
+                  onChangeText={setAddLicenseNum}
+                  placeholder="Optional"
+                  autoCapitalize="none"
+                />
+
+                {addError ? (
+                  <Text style={styles.addErrorText}>{addError}</Text>
+                ) : null}
+
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setShowAdd(false);
+                      setAddError('');
+                      setAddState('');
+                      setAddExpDate('');
+                      setAddLicenseNum('');
+                    }}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, addSaving && styles.saveBtnDisabled]}
+                    onPress={handleAdd}
+                    disabled={addSaving}
+                  >
+                    <Text style={styles.saveBtnText}>
+                      {addSaving ? 'Saving...' : 'Save'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
           )}
 
-          {/* Add License button */}
-          {!showAdd && (
+          {/* ── Add License button ── */}
+          {!showAdd && licenses.length > 0 && (
             <Button
               title="Add License"
               onPress={() => setShowAdd(true)}
@@ -399,10 +462,12 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
+    paddingHorizontal: theme.spacing[6],
     paddingTop: theme.spacing[3],
     paddingBottom: theme.spacing[3],
     borderBottomWidth: 1,
@@ -410,29 +475,28 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingVertical: theme.spacing[1],
-    paddingRight: theme.spacing[3],
   },
   backBtnText: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.plum,
-    fontWeight: theme.fontWeight.medium,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: theme.fontSize.lg,
+    fontSize: 18,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plumDark,
   },
   headerSpacer: {
-    width: 60,
+    flex: 1,
   },
+
   scroll: {
-    paddingHorizontal: theme.spacing[4],
+    paddingHorizontal: theme.spacing[6],
     paddingTop: theme.spacing[4],
     paddingBottom: theme.spacing[10],
+    gap: theme.spacing[3],
   },
+
+  // Loading
   loadingCard: {
     alignItems: 'center',
     padding: theme.spacing[6],
@@ -441,81 +505,130 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
     fontSize: theme.fontSize.md,
   },
+
+  // Empty state
   emptyCard: {
     alignItems: 'center',
-    padding: theme.spacing[6],
+    paddingVertical: theme.spacing[10],
+    paddingHorizontal: theme.spacing[6],
+    gap: theme.spacing[3],
   },
   emptyText: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.plumDark,
-    marginBottom: theme.spacing[1],
+    marginTop: theme.spacing[1],
   },
   emptySubtext: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.gray500,
     textAlign: 'center',
+    lineHeight: 20,
   },
-  licenseCard: {
+  emptyAddBtn: {
+    marginTop: theme.spacing[2],
+    backgroundColor: theme.colors.plum,
+    paddingHorizontal: theme.spacing[6],
+    paddingVertical: theme.spacing[3],
+    borderRadius: theme.borderRadius.md,
+  },
+  emptyAddBtnText: {
+    color: theme.colors.white,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+  },
+
+  // License card
+  licenseCardOuter: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
     marginBottom: theme.spacing[3],
+  },
+  licenseCardInner: {
+    flexDirection: 'row',
+  },
+  accentBar: {
+    width: 4,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderBottomLeftRadius: theme.borderRadius.lg,
+  },
+  licenseCardContent: {
+    flex: 1,
+    padding: theme.spacing[4],
   },
   licenseViewRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    marginBottom: theme.spacing[3],
   },
-  licenseInfo: {
+  licenseLeft: {
     flex: 1,
   },
-  licenseTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing[2],
-    marginBottom: 4,
-  },
   stateAbbr: {
-    fontSize: theme.fontSize.lg,
+    fontSize: 22,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plum,
+    lineHeight: 26,
   },
   stateName: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.gray500,
-  },
-  expRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  expText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-  },
-  expiredBadge: {
-    backgroundColor: theme.colors.error,
-    paddingVertical: 2,
-    paddingHorizontal: theme.spacing[2],
-    borderRadius: theme.borderRadius.sm,
-  },
-  expiredBadgeText: {
-    color: theme.colors.white,
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.bold,
-  },
-  licenseNumText: {
-    fontSize: theme.fontSize.xs,
+    fontSize: 12,
     color: theme.colors.gray500,
     marginTop: 2,
   },
-  licenseActions: {
+  licenseRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  expBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing[3],
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+  },
+  expBadgeText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  licenseNumText: {
+    fontSize: 11,
+    color: theme.colors.gray500,
+    fontWeight: theme.fontWeight.regular,
+  },
+
+  // License action row
+  licenseActionsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
+    paddingTop: theme.spacing[2],
     gap: theme.spacing[3],
-    paddingLeft: theme.spacing[3],
-    paddingTop: 2,
   },
-  iconBtn: {
-    padding: theme.spacing[1],
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: theme.spacing[1],
   },
+  actionBtnTextEdit: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.plum,
+  },
+  actionBtnTextDelete: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.error,
+  },
+  actionDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: theme.colors.gray100,
+  },
+
+  // Edit mode inside card
   editHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -592,20 +705,35 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.white,
   },
-  addCard: {
+
+  // Add form card
+  addCardOuter: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
     marginBottom: theme.spacing[4],
+  },
+  addCardHeader: {
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[4],
+    paddingBottom: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
   },
   addCardTitle: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plumDark,
-    marginBottom: theme.spacing[2],
+  },
+  addCardBody: {
+    padding: theme.spacing[4],
   },
   addErrorText: {
     color: theme.colors.error,
     fontSize: theme.fontSize.sm,
     marginTop: theme.spacing[2],
   },
+
   addLicenseBtn: {
     marginTop: theme.spacing[2],
   },

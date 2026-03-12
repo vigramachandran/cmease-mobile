@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
+import { ChevronRight, LogOut } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -67,87 +68,114 @@ export default function SettingsScreen() {
   const connectedCount = connectedDomains.length;
   const totalProviders = PROVIDER_DOMAINS.length;
 
+  const firstName = profile?.firstName ?? '';
+  const lastName = profile?.lastName ?? '';
+  const initials =
+    (firstName[0] ?? '') + (lastName[0] ?? '') || (profile?.email?.[0]?.toUpperCase() ?? '?');
+
+  const fullName = [profile?.credential, profile?.firstName, profile?.lastName]
+    .filter(Boolean)
+    .join(' ') || undefined;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Settings</Text>
 
-        {/* Profile */}
+        {/* ── Profile ── */}
         <Text style={styles.sectionLabel}>Profile</Text>
-        <Card style={styles.card}>
-          <Row
-            label="Name"
-            value={
-              [profile?.credential, profile?.firstName, profile?.lastName]
-                .filter(Boolean)
-                .join(' ') || undefined
-            }
-          />
-          <Row label="Email" value={profile?.email} />
-          <Row label="NPI" value={profile?.npi} />
-          <Row label="Specialty" value={profile?.specialty} />
-          {!profile?.npi && (
-            <Text style={styles.emptyHint}>
-              Complete onboarding to add profile details.
-            </Text>
+        <Card style={styles.profileCard}>
+          {/* Plum accent strip */}
+          <View style={styles.profileAccentStrip} />
+
+          {/* Avatar + info row */}
+          <View style={styles.profileBody}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{initials.toUpperCase()}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              {fullName ? (
+                <Text style={styles.profileName}>{fullName}</Text>
+              ) : null}
+              {profile?.npi ? (
+                <Text style={styles.profileMeta}>NPI: {profile.npi}</Text>
+              ) : null}
+              {profile?.specialty ? (
+                <Text style={styles.profileMeta}>{profile.specialty}</Text>
+              ) : null}
+              {profile?.email ? (
+                <Text style={styles.profileEmail}>{profile.email}</Text>
+              ) : null}
+              {!profile?.npi && (
+                <Text style={styles.emptyHint}>
+                  Complete onboarding to add profile details.
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* License state chips inside profile card */}
+          {profile?.licenseStates && profile.licenseStates.length > 0 && (
+            <View style={styles.statesRow}>
+              {profile.licenseStates.map((state) => (
+                <View key={state} style={styles.statePill}>
+                  <Text style={styles.statePillText}>{state}</Text>
+                </View>
+              ))}
+            </View>
           )}
         </Card>
 
-        {/* License states */}
-        {profile?.licenseStates && profile.licenseStates.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>License States</Text>
-            <Card style={styles.card}>
-              <View style={styles.statesRow}>
-                {profile.licenseStates.map((state) => (
-                  <View key={state} style={styles.statePill}>
-                    <Text style={styles.statePillText}>{state}</Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
-          </>
-        )}
-
-        {/* Connected CME Accounts */}
+        {/* ── Connected CME Accounts ── */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>Connected CME Accounts</Text>
+          <Text style={styles.sectionLabel}>CME Providers</Text>
           <Text style={styles.sectionCount}>
-            {connectedCount}/{totalProviders}
+            {connectedCount}/{totalProviders} connected
           </Text>
         </View>
         <Card style={styles.card}>
-          {connectedDomains.length > 0 ? (
-            <>
-              {connectedDomains.map((domain) => (
-                <View key={domain} style={styles.connectedRow}>
+          {/* Provider icon circles row */}
+          <View style={styles.providerIconsRow}>
+            {PROVIDER_DOMAINS.map((domain) => {
+              const prov = PROVIDERS[domain];
+              const isConnected = connectedDomains.includes(domain);
+              const nameInitials = (prov?.name ?? domain)
+                .split(' ')
+                .map((w: string) => w[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+              return (
+                <View key={domain} style={styles.providerIconWrapper}>
                   <View
                     style={[
-                      styles.connectedDot,
-                      { backgroundColor: PROVIDERS[domain]?.color ?? theme.colors.success },
+                      styles.providerIconCircle,
+                      { backgroundColor: prov?.color ?? theme.colors.gray300 },
+                      !isConnected && styles.providerIconCircleDisconnected,
                     ]}
-                  />
-                  <Text style={styles.connectedName}>
-                    {PROVIDERS[domain]?.name ?? domain}
-                  </Text>
-                  <Text style={styles.connectedStatus}>Connected</Text>
-                </View>
-              ))}
-
-              {/* Show disconnected ones too */}
-              {PROVIDER_DOMAINS.filter((d) => !connectedDomains.includes(d)).map(
-                (domain) => (
-                  <View key={domain} style={styles.connectedRow}>
-                    <View style={[styles.connectedDot, { backgroundColor: theme.colors.gray300 }]} />
-                    <Text style={[styles.connectedName, { color: theme.colors.gray500 }]}>
-                      {PROVIDERS[domain]?.name ?? domain}
-                    </Text>
-                    <Text style={styles.notConnectedStatus}>Not connected</Text>
+                  >
+                    <Text style={styles.providerIconInitials}>{nameInitials}</Text>
+                    {/* Connection dot badge */}
+                    <View
+                      style={[
+                        styles.providerDotBadge,
+                        {
+                          backgroundColor: isConnected
+                            ? theme.colors.success
+                            : theme.colors.gray300,
+                        },
+                      ]}
+                    />
                   </View>
-                )
-              )}
-            </>
-          ) : (
+                  <Text style={styles.providerIconLabel} numberOfLines={1}>
+                    {prov?.name ?? domain}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {connectedDomains.length === 0 && (
             <Text style={styles.placeholderText}>
               No providers connected. Connect your accounts to enable seamless
               course access.
@@ -159,17 +187,25 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/connect-accounts' as any)}
             activeOpacity={0.7}
           >
-            <Text style={styles.manageBtnText}>Manage Connections →</Text>
+            <Text style={styles.manageBtnText}>Manage Connections</Text>
+            <ChevronRight size={16} color={theme.colors.plum} />
           </TouchableOpacity>
         </Card>
 
-        {/* Sign out */}
+        {/* ── App ── */}
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>App</Text>
+        <Card style={styles.card}>
+          <Row label="Version" value={appVersion} muted />
+        </Card>
+
+        {/* ── Sign Out ── */}
         <TouchableOpacity
           style={[styles.signOutBtn, signingOut && styles.signOutBtnDisabled]}
           onPress={handleSignOut}
           disabled={signingOut}
           activeOpacity={0.7}
         >
+          <LogOut size={18} color={theme.colors.error} style={styles.signOutIcon} />
           <Text style={styles.signOutText}>
             {signingOut ? 'Signing out…' : 'Sign Out'}
           </Text>
@@ -191,26 +227,114 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing[5],
     marginBottom: theme.spacing[5],
   },
+
+  // Section labels
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: theme.spacing[4],
+    marginTop: theme.spacing[6],
     marginBottom: theme.spacing[2],
   },
   sectionLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: 11,
+    fontWeight: '700',
     color: theme.colors.gray500,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
+    marginBottom: theme.spacing[2],
+  },
+  sectionLabelSpaced: {
+    marginTop: theme.spacing[6],
   },
   sectionCount: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.plum,
   },
+
+  // Profile card
+  profileCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  profileAccentStrip: {
+    height: 6,
+    backgroundColor: theme.colors.plum,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing[4],
+  },
+  profileBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[3],
+    gap: theme.spacing[3],
+  },
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.plum,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarInitials: {
+    color: theme.colors.white,
+    fontSize: 18,
+    fontWeight: theme.fontWeight.bold,
+  },
+  profileInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.plumDark,
+    marginBottom: 2,
+  },
+  profileMeta: {
+    fontSize: 13,
+    color: theme.colors.gray500,
+    lineHeight: 18,
+  },
+  profileEmail: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    marginTop: 1,
+  },
+  emptyHint: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    paddingVertical: theme.spacing[2],
+  },
+  statesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[4],
+    paddingTop: theme.spacing[1],
+  },
+  statePill: {
+    backgroundColor: theme.colors.gray100,
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing[3],
+    borderRadius: theme.borderRadius.full,
+  },
+  statePillText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.plum,
+  },
+
+  // Generic card
   card: { padding: theme.spacing[4] },
+
+  // Rows (used by App section)
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -219,7 +343,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
   },
-  rowLabel: { fontSize: theme.fontSize.sm, color: theme.colors.gray500, fontWeight: theme.fontWeight.medium },
+  rowLabel: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    fontWeight: theme.fontWeight.medium,
+  },
   rowValue: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.plumDark,
@@ -227,53 +355,102 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  rowValueMuted: { color: theme.colors.gray500, fontWeight: theme.fontWeight.regular },
-  emptyHint: { fontSize: theme.fontSize.sm, color: theme.colors.gray500, paddingVertical: theme.spacing[2] },
-  statesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing[2] },
-  statePill: {
-    backgroundColor: theme.colors.gray100,
-    paddingVertical: 4,
-    paddingHorizontal: theme.spacing[3],
-    borderRadius: theme.borderRadius.full,
+  rowValueMuted: {
+    color: theme.colors.gray500,
+    fontWeight: theme.fontWeight.regular,
   },
-  statePillText: { fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.semibold, color: theme.colors.plum },
-  // Connected accounts
-  connectedRow: {
+
+  // Provider circles
+  providerIconsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[4],
+    marginBottom: theme.spacing[3],
+  },
+  providerIconWrapper: {
+    alignItems: 'center',
+    width: 56,
+  },
+  providerIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 4,
+  },
+  providerIconCircleDisconnected: {
+    opacity: 0.45,
+  },
+  providerIconInitials: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: theme.fontWeight.bold,
+  },
+  providerDotBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: theme.colors.white,
+  },
+  providerIconLabel: {
+    fontSize: 10,
+    color: theme.colors.gray500,
+    textAlign: 'center',
+  },
+
+  // Manage connections row
+  placeholderText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    lineHeight: 22,
+    marginBottom: theme.spacing[3],
+  },
+  manageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: theme.spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    gap: theme.spacing[2],
-  },
-  connectedDot: { width: 8, height: 8, borderRadius: 4 },
-  connectedName: {
-    flex: 1,
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.plumDark,
-  },
-  connectedStatus: { fontSize: theme.fontSize.xs, color: theme.colors.success, fontWeight: theme.fontWeight.semibold },
-  notConnectedStatus: { fontSize: theme.fontSize.xs, color: theme.colors.gray500 },
-  placeholderText: { fontSize: theme.fontSize.sm, color: theme.colors.gray500, lineHeight: 22, marginBottom: theme.spacing[3] },
-  manageBtn: {
+    justifyContent: 'center',
     marginTop: theme.spacing[3],
     paddingVertical: theme.spacing[3],
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray100,
-    alignItems: 'center',
+    gap: 4,
   },
-  manageBtnText: { fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.semibold, color: theme.colors.plum },
+  manageBtnText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.plum,
+  },
+
   // Sign out
   signOutBtn: {
     marginTop: theme.spacing[8],
     height: 52,
     borderRadius: theme.borderRadius.md,
-    backgroundColor: '#FDECEA',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.spacing[2],
   },
   signOutBtnDisabled: { opacity: 0.6 },
-  signOutText: { color: theme.colors.error, fontSize: theme.fontSize.md, fontWeight: theme.fontWeight.semibold },
-  version: { textAlign: 'center', marginTop: theme.spacing[5], fontSize: theme.fontSize.xs, color: theme.colors.gray300 },
+  signOutIcon: {},
+  signOutText: {
+    color: theme.colors.error,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  version: {
+    textAlign: 'center',
+    marginTop: theme.spacing[5],
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.gray300,
+  },
 });
